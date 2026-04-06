@@ -1,0 +1,13 @@
+node_modules/
+.env
+dist/
+build/
+.DS_Store
+.vscode/
+*.log
+package-lock.json
+frontend/node_modules/
+backend/node_modules/
+ai_service/venv/
+ai_service/__pycache__/
+ai_service/*.pyc
