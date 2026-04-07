@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, MapPin, User, Phone, IndianRupee, Edit3, Trash2, Map } from 'lucide-react';
 
 const initialLands = [
@@ -8,8 +8,8 @@ const initialLands = [
     location: 'Kondampatty',
     managerName: 'Arun Kumar',
     managerContact: '+91 98765 43210',
-    landWorth: 150000000,
-    purchasePrice: 110000000,
+    landWorth: 15000000,
+    purchasePrice: 11000000,
     imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80'
   },
   {
@@ -18,14 +18,22 @@ const initialLands = [
     location: 'Kangeyam',
     managerName: 'Thomas George',
     managerContact: '+91 87654 32109',
-    landWorth: 85000000,
-    purchasePrice: 45000000,
+    landWorth: 8500000,
+    purchasePrice: 4500000,
     imageUrl: 'https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?w=800&q=80'
   }
 ];
 
 export default function LandAssets({ isDark }) {
-  const [lands, setLands] = useState(initialLands);
+  const [lands, setLands] = useState(() => {
+    const saved = localStorage.getItem('wealth_lands');
+    return saved ? JSON.parse(saved) : initialLands;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('wealth_lands', JSON.stringify(lands));
+  }, [lands]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
 
@@ -43,6 +51,11 @@ export default function LandAssets({ isDark }) {
 
   const handleSave = () => {
     if (!formData.landName || !formData.location || !formData.landWorth) return;
+
+    if (!formData.imageUrl) {
+        alert("Action Required: Please upload a site photo to continue.");
+        return;
+    }
 
     if (editId) {
       setLands(lands.map(l => l.id === editId ? { ...l, ...formData } : l));

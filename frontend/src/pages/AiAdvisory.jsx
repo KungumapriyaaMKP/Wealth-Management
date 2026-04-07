@@ -5,25 +5,29 @@ export default function AiAdvisory({ isDark }) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [language, setLanguage] = useState('en-IN');
+  const [statusMsg, setStatusMsg] = useState('');
   const [chatHistory, setChatHistory] = useState([
     { role: 'ai', content: 'Hello! I am your AI Wealth Advisor. How can I help you manage your money today?', lang: 'en-IN' }
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [useLocalAI, setUseLocalAI] = useState(false); // NEW: Toggle between Gemini (Cloud) and Ollama (Local)
 
-  // For real data analysis, we'd normally pull this from a global state or database
-  // For now, we'll simulate the "live" state based on the modules we've built
-  const [financialProfile, setFinancialProfile] = useState({
-     total_net_worth: "₹3.15 Crore",
-     assets: {
-        land: "2 Properties (Kondampatty & Kangeyam)",
-        vehicles: "2 (Porsche 911 GT3 & Range Rover)",
-        vault: "Gold Bullion (1.2Kg) & Diamond Necklace",
-     },
-     liabilities: {
-        total_debt: "₹1.75 Crore",
-        monthly_emi: "₹1.82 Lakhs"
-     }
-  });
+  const [financialProfile, setFinancialProfile] = useState({});
+
+  useEffect(() => {
+    // Collect all real-time data from local storage
+    const v = localStorage.getItem('wealth_vehicles');
+    const l = localStorage.getItem('wealth_lands');
+    const va = localStorage.getItem('wealth_vault');
+    const lo = localStorage.getItem('wealth_loans');
+    
+    setFinancialProfile({
+       vehicles: v ? JSON.parse(v) : [],
+       lands: l ? JSON.parse(l) : [],
+       vault: va ? JSON.parse(va) : [],
+       loans: lo ? JSON.parse(lo) : []
+    });
+  }, []);
 
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
@@ -81,32 +85,47 @@ export default function AiAdvisory({ isDark }) {
   const handleUserSpeech = async (userVoiceText) => {
     setChatHistory(prev => [...prev, { role: 'user', content: userVoiceText, lang: language }]);
     setIsProcessing(true);
+    setStatusMsg('Connecting to AI advisor...');
     
+    // Refresh context from localStorage right before sending
+    const v = JSON.parse(localStorage.getItem('wealth_vehicles') || '[]');
+    const l = JSON.parse(localStorage.getItem('wealth_lands') || '[]');
+    const va = JSON.parse(localStorage.getItem('wealth_vault') || '[]');
+    const lo = JSON.parse(localStorage.getItem('wealth_loans') || '[]');
+    
+    const latestProfile = { vehicles: v, lands: l, vault: va, loans: lo };
+
     try {
-        // CALL REAL BACKEND AI ADVISOR
+        setStatusMsg(useLocalAI ? 'Checking local Ollama node...' : 'Analyzing real-time assets...');
         const response = await fetch('http://localhost:5000/api/advisory', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 query: userVoiceText,
-                assetSummary: financialProfile,
-                language: language
+                assetSummary: latestProfile,
+                language: language,
+                useLocal: useLocalAI // Tell backend to use local model
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+
         const data = await response.json();
-        const aiResponse = data.advice || "சாரி, என்னால் இப்போது பதிலளிக்க முடியவில்லை.";
+        const aiResponse = data.advice || 'No response received from AI.';
 
         setChatHistory(prev => [...prev, { role: 'ai', content: aiResponse, lang: language }]);
         setIsProcessing(false);
+        setStatusMsg('');
         speakText(aiResponse, language);
         
     } catch (err) {
-        console.error("AI Fetch Error:", err);
-        const errorMsg = "வெல்த் அட்வைசர் சர்வர் தற்போது ஆஃப்லைனில் உள்ளது.";
+        console.error('AI Fetch Error:', err);
+        const errorMsg = `⚠️ Error: ${err.message}. Make sure backend is running at localhost:5000.`;
         setChatHistory(prev => [...prev, { role: 'ai', content: errorMsg, lang: language }]);
+        setStatusMsg(`Failed: ${err.message}`);
         setIsProcessing(false);
-        speakText(errorMsg, language);
     }
   };
 
@@ -148,20 +167,34 @@ export default function AiAdvisory({ isDark }) {
           <p className={`text-sm ${textMuted} tracking-wide`}>Speak naturally. I can analyze your wealth and guide you in your native language.</p>
         </div>
         
-        <div className="flex items-center gap-3">
-           <Globe size={16} className={textMuted}/>
-           <select 
-             value={language} 
-             onChange={(e) => setLanguage(e.target.value)}
-             className={`px-4 py-2.5 rounded-lg text-sm font-semibold focus:outline-none focus:border-[#d4af37] border shadow-sm ${isDark ? 'bg-[#111] text-white border-[#222]' : 'bg-slate-50 text-slate-900 border-slate-200'}`}
-           >
-                <option value="en-IN">English (India)</option>
-                <option value="hi-IN">हिन्दी (Hindi)</option>
-                <option value="ta-IN">தமிழ் (Tamil)</option>
-                <option value="te-IN">తెలుగు (Telugu)</option>
-                <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
-                <option value="ml-IN">മലയാളം (Malayalam)</option>
-           </select>
+        <div className="flex items-center gap-6">
+           <div className="flex items-center gap-2 pr-4 border-r border-[#222]">
+              <div 
+                onClick={() => setUseLocalAI(!useLocalAI)}
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${useLocalAI ? 'bg-emerald-600' : 'bg-[#222]'}`}
+              >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-300 ${useLocalAI ? 'left-5.5' : 'left-0.5'}`}></div>
+              </div>
+              <span className={`text-[10px] uppercase font-bold tracking-widest ${useLocalAI ? 'text-emerald-500' : textMuted}`}>
+                  Privacy Mode (Local)
+              </span>
+           </div>
+
+           <div className="flex items-center gap-3">
+              <Globe size={16} className={textMuted}/>
+              <select 
+                value={language} 
+                onChange={(e) => setLanguage(e.target.value)}
+                className={`px-4 py-2.5 rounded-lg text-sm font-semibold focus:outline-none focus:border-[#d4af37] border shadow-sm ${isDark ? 'bg-[#111] text-white border-[#222]' : 'bg-slate-50 text-slate-900 border-slate-200'}`}
+              >
+                   <option value="en-IN">English (India)</option>
+                   <option value="hi-IN">हिन्दी (Hindi)</option>
+                   <option value="ta-IN">தமிழ் (Tamil)</option>
+                   <option value="te-IN">తెలుగు (Telugu)</option>
+                   <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+                   <option value="ml-IN">മലയാളം (Malayalam)</option>
+              </select>
+           </div>
         </div>
       </header>
 
@@ -231,11 +264,16 @@ export default function AiAdvisory({ isDark }) {
              </div>
 
              <div className="w-full flex justify-between items-end mt-4">
-                 <div className="flex items-center gap-2">
-                     <div className={`w-2 h-2 rounded-full ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-[#444]'}`}></div>
-                     <span className={`text-[10px] uppercase font-bold tracking-widest ${isListening ? 'text-rose-500' : textMuted}`}>
-                         {isListening ? 'Real-Time Voice Sink' : 'Mic Off'}
-                     </span>
+                 <div className="flex flex-col gap-1">
+                   <div className="flex items-center gap-2">
+                       <div className={`w-2 h-2 rounded-full ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-[#444]'}`}></div>
+                       <span className={`text-[10px] uppercase font-bold tracking-widest ${isListening ? 'text-rose-500' : textMuted}`}>
+                           {isListening ? 'Listening... Speak now' : 'Click mic to speak'}
+                       </span>
+                   </div>
+                   {statusMsg && (
+                     <p className="text-[10px] text-orange-400 font-semibold tracking-wide">{statusMsg}</p>
+                   )}
                  </div>
                  
                  {isSpeaking && (

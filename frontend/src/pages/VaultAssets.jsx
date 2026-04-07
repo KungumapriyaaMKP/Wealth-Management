@@ -10,7 +10,7 @@ const initialVault = [
     storageLoc: 'HDFC Bank Locker 104',
     purchasePrice: 12000000,
     currentValue: 15500000,
-    imageUrl: ''
+    imageUrl: 'https://images.unsplash.com/photo-1610375461246-83df859d849d?w=800&q=80'
   },
   {
     id: 2,
@@ -20,12 +20,28 @@ const initialVault = [
     storageLoc: 'Home Master Safe',
     purchasePrice: 4500000,
     currentValue: 4700000,
-    imageUrl: ''
+    imageUrl: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&q=80'
   }
 ];
 
 export default function VaultAssets({ isDark }) {
-  const [vault, setVault] = useState(initialVault);
+  const [vault, setVault] = useState(() => {
+    const saved = localStorage.getItem('wealth_vault');
+    let vaultData = saved ? JSON.parse(saved) : initialVault;
+    
+    // FORCE SYNC: If the old technician image is found, replace it with the new gold bullion image
+    return vaultData.map(asset => {
+        if (asset.imageUrl.includes('photo-1581091226825-a6a2a5aee158')) {
+            return { ...asset, imageUrl: 'https://images.unsplash.com/photo-1610375461246-83df859d849d?w=800&q=80' };
+        }
+        return asset;
+    });
+  });
+
+  useEffect(() => {
+    localStorage.setItem('wealth_vault', JSON.stringify(vault));
+  }, [vault]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
 
@@ -71,6 +87,11 @@ export default function VaultAssets({ isDark }) {
 
   const handleSave = () => {
     if (!formData.assetName || !formData.purchasePrice || !formData.currentValue) return;
+
+    if (!formData.imageUrl) {
+        alert("Action Required: Please upload a photo of the asset to verify its secure storage.");
+        return;
+    }
 
     if (editId) {
       setVault(vault.map(v => v.id === editId ? { ...v, ...formData } : v));

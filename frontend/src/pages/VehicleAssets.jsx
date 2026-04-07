@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, CarFront, ShieldCheck, GaugeCircle, IndianRupee, Edit3, Trash2, Tag, TrendingDown } from 'lucide-react';
 
 const initialVehicles = [
@@ -9,7 +9,7 @@ const initialVehicles = [
     type: 'Sports Car',
     purchasePrice: 25000000,
     insuranceAttached: true,
-    imageUrl: ''
+    imageUrl: 'https://images.unsplash.com/photo-1503376713-911cb7ee90a5?w=800&q=80'
   },
   {
     id: 2,
@@ -18,12 +18,20 @@ const initialVehicles = [
     type: 'SUV',
     purchasePrice: 32000000,
     insuranceAttached: true,
-    imageUrl: ''
+    imageUrl: 'https://images.unsplash.com/photo-1549314488-dc7849e8aae1?w=800&q=80'
   }
 ];
 
 export default function VehicleAssets({ isDark }) {
-  const [vehicles, setVehicles] = useState(initialVehicles);
+  const [vehicles, setVehicles] = useState(() => {
+    const saved = localStorage.getItem('wealth_vehicles');
+    return saved ? JSON.parse(saved) : initialVehicles;
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('wealth_vehicles', JSON.stringify(vehicles));
+  }, [vehicles]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
 
@@ -55,6 +63,11 @@ export default function VehicleAssets({ isDark }) {
 
   const handleSave = () => {
     if (!formData.brand || !formData.model || !formData.purchasePrice) return;
+    
+    if (!formData.imageUrl) {
+        alert("Action Required: Please upload a vehicle photo to complete registration.");
+        return;
+    }
 
     if (editId) {
       setVehicles(vehicles.map(v => v.id === editId ? { ...v, ...formData } : v));

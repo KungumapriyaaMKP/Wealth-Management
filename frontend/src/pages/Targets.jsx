@@ -9,7 +9,7 @@ const initialTargets = [
     targetAmount: 10000000,
     savedAmount: 4500000,
     deadline: 'Dec 2026',
-    imageUrl: ''
+    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80'
   },
   {
     id: 2,
@@ -18,7 +18,7 @@ const initialTargets = [
     targetAmount: 2500000,
     savedAmount: 800000,
     deadline: 'Aug 2028',
-    imageUrl: ''
+    imageUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80'
   }
 ];
 

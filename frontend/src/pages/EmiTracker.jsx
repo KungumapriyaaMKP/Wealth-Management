@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, CreditCard, Landmark, Percent, IndianRupee, Edit3, Trash2, CalendarCheck, CalendarDays, Check } from 'lucide-react';
 
 const initialLoans = [
@@ -27,7 +27,15 @@ const initialLoans = [
 ];
 
 export default function EmiTracker({ isDark }) {
-  const [loans, setLoans] = useState(initialLoans);
+  const [loans, setLoans] = useState(() => {
+    const saved = localStorage.getItem('wealth_loans');
+    return saved ? JSON.parse(saved) : initialLoans;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('wealth_loans', JSON.stringify(loans));
+  }, [loans]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
 
